@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fetch hawker closure data
         env:
@@ -35,6 +37,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/gyulkacf/sghawkerstatus-web.git
           git add data.json
           git diff --staged --quiet || git commit -m "Update hawker data [$(date -u '+%Y-%m-%d %H:%M UTC')]"
           git push
