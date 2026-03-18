@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SG Hawker Status — Closure Dates</title>
+  <meta name="description" content="Check which Singapore hawker centres are closed for cleaning today, tomorrow, or this week." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --red:      #C0392B;
+      --red-pale: #fdf2f1;
+      --ink:      #1a1a1a;
+      --mid:      #6b6b6b;
+      --border:   #e0e0e0;
+      --bg:       #f9f9f9;
+      --white:    #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .site-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+    }
+
+    .site-name span {
+      color: var(--red);
+    }
+
+    .tg-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--white);
+      background: var(--red);
+      text-decoration: none;
+      padding: 0.4rem 0.9rem;
+      border-radius: 3px;
+      transition: background 0.15s;
+    }
+
+    .tg-link:hover { background: #a93226; }
+
+    .tg-link svg { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
+
+    /* ── Main container ── */
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+    }
+
+    /* ── Page heading ── */
+    .page-heading {
+      margin-bottom: 1.5rem;
+    }
+
+    .page-heading h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.2rem;
+    }
+
+    .page-heading p {
+      font-size: 0.82rem;
+      color: var(--mid);
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      border-bottom: 1.5px solid var(--border);
+      margin-bottom: 1.25rem;
+      gap: 0;
+    }
+
+    .tab {
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      color: var(--mid);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 0.55rem 1.1rem 0.65rem;
+      cursor: pointer;
+      margin-bottom: -1.5px;
+      transition: color 0.12s, border-color 0.12s;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+    }
+
+    .tab:hover { color: var(--ink); }
+
+    .tab.active {
+      color: var(--red);
+      border-bottom-color: var(--red);
+      font-weight: 600;
+    }
+
+    /* ── Panel ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .date-label {
+      font-size: 0.78rem;
+      color: var(--mid);
+      margin-bottom: 0.9rem;
+    }
+
+    /* ── Table ── */
+    .closure-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--white);
+      border: 1px solid var(--border);
+    }
+
+    .closure-table th {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--mid);
+      text-align: left;
+      padding: 0.65rem 1rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .closure-table td {
+      padding: 0.7rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.88rem;
+      vertical-align: middle;
+    }
+
+    .closure-table tr:last-child td { border-bottom: none; }
+
+    .closure-table tr:hover td { background: var(--red-pale); }
+
+    .closure-table td:last-child {
+      color: var(--mid);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+      background: var(--white);
+      border: 1px solid var(--border);
+      padding: 1.5rem 1rem;
+      text-align: center;
+      font-size: 0.88rem;
+      color: var(--mid);
+    }
+
+    .empty-state strong {
+      display: block;
+      font-size: 1rem;
+      color: #2d7a2d;
+      margin-bottom: 0.25rem;
+    }
+
+    /* ── Count badge ── */
+    .count-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      background: var(--red);
+      color: #fff;
+      border-radius: 2px;
+      padding: 0.1rem 0.45rem;
+      margin-left: 0.4rem;
+      vertical-align: middle;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Bot promo strip ── */
+    .bot-strip {
+      margin-top: 2rem;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--red);
+      padding: 0.9rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .bot-strip-text {
+      font-size: 0.85rem;
+      color: var(--ink);
+    }
+
+    .bot-strip-text strong { font-weight: 600; }
+    .bot-strip-text p { font-size: 0.78rem; color: var(--mid); margin-top: 0.15rem; }
+
+    /* ── Features ── */
+    .features {
+      margin-top: 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .feature {
+      background: var(--white);
+      border: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      font-size: 0.82rem;
+    }
+
+    .feature strong {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+    }
+
+    .feature p { color: var(--mid); font-size: 0.78rem; line-height: 1.45; }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.72rem;
+      color: var(--mid);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .footer a { color: var(--mid); text-decoration: none; }
+    .footer a:hover { color: var(--red); }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .container { padding: 1.25rem 1rem 2.5rem; }
+      .closure-table th, .closure-table td { padding: 0.6rem 0.75rem; }
+      .closure-table td:last-child { white-space: normal; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <span class="site-name">SG Hawker <span>Status</span></span>
+  <a href="https://t.me/SGHawkerStatusBot" class="tg-link" target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+    Telegram Bot
+  </a>
+</div>
+
+<!-- Main content -->
+<div class="container">
+
+  <div class="page-heading">
+    <h1>Hawker Centre Closures</h1>
+    <p>Cleaning and renovation schedules. Updated regularly.</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="today">Closed Today</button>
+    <button class="tab" data-tab="tomorrow">Closed Tomorrow</button>
+    <button class="tab" data-tab="week">This Week</button>
+  </div>
+
+  <!-- Today -->
+  <div class="panel active" id="panel-today">
+    <p class="date-label" id="label-today"></p>
+    <div id="content-today"><p style="color:var(--mid);font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- Tomorrow -->
+  <div class="panel" id="panel-tomorrow">
+    <p class="date-label" id="label-tomorrow"></p>
+    <div id="content-tomorrow"><p style="color:var(--mid);font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- This week -->
+  <div class="panel" id="panel-week">
+    <p class="date-label" id="label-week"></p>
+    <div id="content-week"><p style="color:var(--mid);font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- Bot promo -->
+  <div class="bot-strip">
+    <div class="bot-strip-text">
+      <strong>Get alerts on Telegram</strong>
+      <p>Search any hawker centre, save favourites, and get notified before closures.</p>
+    </div>
+    <a href="https://t.me/SGHawkerStatusBot" class="tg-link" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+      Open Bot
+    </a>
+  </div>
+
+  <!-- Features -->
+  <div class="features">
+    <div class="feature">
+      <strong>🔍 Search any hawker</strong>
+      <p>Type a name — fuzzy matching finds it even with a typo.</p>
+    </div>
+    <div class="feature">
+      <strong>⭐ Save favourites</strong>
+      <p>Up to 10 hawker centres. Check all of them at once.</p>
+    </div>
+    <div class="feature">
+      <strong>🔔 Day-before alerts</strong>
+      <p>Follow <a href="https://t.me/SGHawkerStatus" target="_blank" rel="noopener" style="color:var(--red)">@SGHawkerStatus</a> for automatic closure alerts.</p>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>© 2026 SG Hawker Status &nbsp;·&nbsp; Not affiliated with any government agency</span>
+    <span>
+      <a href="https://t.me/SGHawkerStatusBot" target="_blank" rel="noopener">@SGHawkerStatusBot</a>
+      &nbsp;·&nbsp;
+      <a href="https://t.me/SGHawkerStatus" target="_blank" rel="noopener">@SGHawkerStatus</a>
+    </span>
+  </div>
+
+</div>
+
+<script>
+  // ── SGT helpers ──
+  function nowSGT() {
+    return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Singapore" }));
+  }
+
+  function stripTime(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function fmtDate(d) {
+    return d.toLocaleDateString("en-SG", {
+      weekday: "long", day: "numeric", month: "long", year: "numeric",
+      timeZone: "Asia/Singapore"
+    });
+  }
+
+  function fmtShort(d) {
+    return d.toLocaleDateString("en-SG", {
+      day: "numeric", month: "short", year: "numeric",
+      timeZone: "Asia/Singapore"
+    });
+  }
+
+  function mondaySGT() {
+    const now = nowSGT();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const m = new Date(now);
+    m.setDate(now.getDate() + diff);
+    return stripTime(m);
+  }
+
+  // ── Date parsing (same logic as bot) ──
+  const PERIODS = [
+    ["q1_cleaningstartdate","q1_cleaningenddate"],
+    ["q2_cleaningstartdate","q2_cleaningenddate"],
+    ["q3_cleaningstartdate","q3_cleaningenddate"],
+    ["q4_cleaningstartdate","q4_cleaningenddate"],
+    ["other_works_startdate","other_works_enddate"],
+  ];
+
+  function parseDate(str) {
+    if (!str) return null;
+    str = str.trim().toUpperCase();
+    if (str === "TBC" || str === "NA" || str === "") return null;
+    const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if (!m) return null;
+    let y = parseInt(m[3]);
+    if (y < 100) y += 2000;
+    return new Date(y, parseInt(m[2]) - 1, parseInt(m[1]));
+  }
+
+  function closureOnDate(rec, target) {
+    const t = stripTime(target);
+    for (const [sk, ek] of PERIODS) {
+      const s = parseDate(rec[sk]), e = parseDate(rec[ek]);
+      if (s && e && stripTime(s) <= t && t <= stripTime(e)) return { s, e };
+    }
+    return null;
+  }
+
+  function closureInRange(rec, rs, re) {
+    rs = stripTime(rs); re = stripTime(re);
+    for (const [sk, ek] of PERIODS) {
+      const s = parseDate(rec[sk]), e = parseDate(rec[ek]);
+      if (s && e && stripTime(s) <= re && stripTime(e) >= rs) return { s, e };
+    }
+    return null;
+  }
+
+  // ── Render table ──
+  function renderTable(rows) {
+    if (!rows.length) {
+      return `<div class="empty-state"><strong>✅ All open</strong>No closures for this period.</div>`;
+    }
+    const trs = rows.map(r =>
+      `<tr><td>${r.name}</td><td>${fmtShort(r.s)} – ${fmtShort(r.e)}</td></tr>`
+    ).join("");
+    return `<table class="closure-table">
+      <thead><tr><th>Hawker Centre</th><th>Closure Period</th></tr></thead>
+      <tbody>${trs}</tbody>
+    </table>`;
+  }
+
+  // ── Update tab labels with count badges ──
+  function setTabBadge(tabId, count) {
+    const btn = document.querySelector(`.tab[data-tab="${tabId}"]`);
+    const existing = btn.querySelector(".count-badge");
+    if (existing) existing.remove();
+    if (count > 0) {
+      const badge = document.createElement("span");
+      badge.className = "count-badge";
+      badge.textContent = count;
+      btn.appendChild(badge);
+    }
+  }
+
+  // ── Populate from records ──
+  function populate(records) {
+    const sgt      = nowSGT();
+    const today    = stripTime(sgt);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    const wMon     = mondaySGT();
+    const wSun     = new Date(wMon); wSun.setDate(wMon.getDate() + 6);
+
+    // Set date labels
+    document.getElementById("label-today").textContent    = fmtDate(today);
+    document.getElementById("label-tomorrow").textContent = fmtDate(tomorrow);
+    document.getElementById("label-week").textContent     =
+      `${fmtShort(wMon)} – ${fmtShort(wSun)}`;
+
+    const buckets = { today: [], tomorrow: [], week: [] };
+
+    for (const rec of records) {
+      const name = (rec.name || "").trim();
+      if (!name) continue;
+      const c1 = closureOnDate(rec, today);
+      if (c1) buckets.today.push({ name, ...c1 });
+      const c2 = closureOnDate(rec, tomorrow);
+      if (c2) buckets.tomorrow.push({ name, ...c2 });
+      const c3 = closureInRange(rec, wMon, wSun);
+      if (c3) buckets.week.push({ name, ...c3 });
+    }
+
+    const byName = (a, b) => a.name.localeCompare(b.name);
+    for (const key of ["today", "tomorrow", "week"]) {
+      buckets[key].sort(byName);
+      document.getElementById("content-" + key).innerHTML = renderTable(buckets[key]);
+      setTabBadge(key, buckets[key].length);
+    }
+  }
+
+  // ── Cache ──
+  const CACHE_KEY = "hawker_data_v1";
+  const CACHE_TS  = "hawker_ts_v1";
+  const CACHE_TTL = 3 * 60 * 60 * 1000;
+
+  function loadCache() {
+    try {
+      const ts = localStorage.getItem(CACHE_TS);
+      if (!ts || Date.now() - parseInt(ts) > CACHE_TTL) return null;
+      const raw = localStorage.getItem(CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function saveCache(records) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(records));
+      localStorage.setItem(CACHE_TS, String(Date.now()));
+    } catch {}
+  }
+
+  // ── Load data ──
+  // NOTE: Direct API fetch blocked by CORS on static hosting.
+  // This will be replaced by a data.json file generated by GitHub Actions.
+  // For now, fetch is attempted and silently fails — page still renders with empty states.
+  async function loadData() {
+    const cached = loadCache();
+    if (cached) { populate(cached); return; }
+
+    try {
+      const res = await fetch("data.json");
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      if (!Array.isArray(json)) throw new Error();
+      saveCache(json);
+      populate(json);
+    } catch {
+      // Silently show empty states until GitHub Actions pipeline is set up
+      const sgt      = nowSGT();
+      const today    = stripTime(sgt);
+      const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+      const wMon     = mondaySGT();
+      const wSun     = new Date(wMon); wSun.setDate(wMon.getDate() + 6);
+      document.getElementById("label-today").textContent    = fmtDate(today);
+      document.getElementById("label-tomorrow").textContent = fmtDate(tomorrow);
+      document.getElementById("label-week").textContent     = `${fmtShort(wMon)} – ${fmtShort(wSun)}`;
+      for (const key of ["today", "tomorrow", "week"]) {
+        document.getElementById("content-" + key).innerHTML =
+          `<div class="empty-state"><strong>Data unavailable</strong>Live data coming soon.</div>`;
+      }
+    }
+  }
+
+  // ── Tabs ──
+  document.querySelectorAll(".tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  loadData();
+</script>
+</body>
+</html>
