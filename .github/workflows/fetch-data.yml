@@ -1,0 +1,37 @@
+name: Fetch Hawker Data
+
+on:
+  schedule:
+    # Runs every 3 hours (SGT = UTC+8, so these are UTC times)
+    - cron: '0 0,3,6,9,12,15,18,21 * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Fetch hawker closure data
+        env:
+          DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
+        run: |
+          curl -s \
+            -H "x-api-key: $DATA_GOV_API_KEY" \
+            "https://data.gov.sg/api/action/datastore_search?resource_id=d_bda4baa634dd1cc7a6c7cad5f19e2d68&limit=200" \
+            | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          records = data['result']['records']
+          print(json.dumps(records, indent=2))
+          " > data.json
+
+      - name: Commit and push if data changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git diff --staged --quiet || git commit -m "Update hawker data [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+          git push
