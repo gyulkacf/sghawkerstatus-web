@@ -410,6 +410,48 @@
       text-align: center;
     }
 
+    /* ── Pinned result card ── */
+    .pinned-result {
+      display: none;
+      position: relative;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--red);
+      padding: 0.85rem 2rem 0.85rem 1rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .pinned-result.visible { display: block; }
+
+    .pinned-result-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.3rem;
+    }
+
+    .pinned-result-status {
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .pinned-close {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.7rem;
+      background: none;
+      border: none;
+      color: var(--mid);
+      font-size: 0.9rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .pinned-close:hover { color: var(--ink); }
+
     /* ── Closure type badge ── */
     .type-badge {
       font-size: 0.68rem;
@@ -466,6 +508,13 @@
     <input type="text" id="hawker-search" placeholder="Search for a hawker centre…" autocomplete="off" />
     <button class="search-clear" id="search-clear">✕</button>
     <div class="search-dropdown" id="search-dropdown"></div>
+  </div>
+
+  <!-- Pinned result card -->
+  <div class="pinned-result" id="pinned-result">
+    <button class="pinned-close" id="pinned-close">✕</button>
+    <div class="pinned-result-name" id="pinned-name"></div>
+    <div class="pinned-result-status" id="pinned-status"></div>
   </div>
 
   <!-- Tabs -->
@@ -705,6 +754,10 @@
   const searchInput = document.getElementById("hawker-search");
   const searchDropdown = document.getElementById("search-dropdown");
   const searchClear = document.getElementById("search-clear");
+  const pinnedResult = document.getElementById("pinned-result");
+  const pinnedName = document.getElementById("pinned-name");
+  const pinnedStatus = document.getElementById("pinned-status");
+  const pinnedClose = document.getElementById("pinned-close");
 
   function showDropdown(html) {
     searchDropdown.innerHTML = html;
@@ -716,11 +769,45 @@
     searchDropdown.innerHTML = "";
   }
 
+  function showPinned(rec) {
+    const name = rec.name || "";
+    const today = stripTime(nowSGT());
+    const closure = closureOnDate(rec, today);
+
+    pinnedName.textContent = name;
+
+    if (closure) {
+      pinnedResult.style.borderLeftColor = "var(--red)";
+      pinnedStatus.innerHTML = `
+        ${typeBadge(closure.type)}
+        <span style="color:var(--red);font-weight:600;">Closed now</span>
+        <span style="color:var(--mid);">${fmtShort(closure.s)} – ${fmtShort(closure.e)}</span>`;
+    } else {
+      pinnedResult.style.borderLeftColor = "#2d7a2d";
+      const next = getNextClosure(rec);
+      pinnedStatus.innerHTML = `
+        <span style="color:#2d7a2d;font-weight:600;">✅ Open today</span>
+        ${next ? `<span style="color:var(--mid);">Next closure: ${fmtShort(next.s)} – ${fmtShort(next.e)}</span>` : '<span style="color:var(--mid);">No upcoming closures on record</span>'}`;
+    }
+
+    pinnedResult.classList.add("visible");
+  }
+
+  function hidePinned() {
+    pinnedResult.classList.remove("visible");
+    pinnedName.textContent = "";
+    pinnedStatus.innerHTML = "";
+  }
+
   searchInput.addEventListener("input", function() {
     const q = this.value.trim();
     searchClear.style.display = q ? "block" : "none";
 
-    if (!q) { hideDropdown(); return; }
+    if (!q) {
+      hideDropdown();
+      hidePinned();
+      return;
+    }
 
     const matches = _allRecords.filter(r => (r.name || "").toLowerCase().includes(q.toLowerCase()));
 
@@ -729,17 +816,38 @@
       return;
     }
 
-    showDropdown(matches.slice(0, 8).map(renderDropdownItem).join(""));
+    const items = matches.slice(0, 8).map((rec, i) => {
+      const html = renderDropdownItem(rec);
+      // Wrap with click handler index
+      return html.replace('class="search-result-item"', `class="search-result-item" data-idx="${i}"`);
+    }).join("");
+
+    showDropdown(items);
+
+    // Attach click handlers
+    searchDropdown.querySelectorAll(".search-result-item").forEach((el, i) => {
+      el.addEventListener("click", () => {
+        showPinned(matches[i]);
+        hideDropdown();
+      });
+    });
   });
 
   searchClear.addEventListener("click", function() {
     searchInput.value = "";
     searchClear.style.display = "none";
     hideDropdown();
+    hidePinned();
     searchInput.focus();
   });
 
-  // Close dropdown when clicking outside
+  pinnedClose.addEventListener("click", function() {
+    hidePinned();
+    searchInput.value = "";
+    searchClear.style.display = "none";
+  });
+
+  // Close dropdown only (not pinned card) when clicking outside
   document.addEventListener("click", function(e) {
     if (!e.target.closest(".search-box")) hideDropdown();
   });
