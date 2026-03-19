@@ -314,6 +314,63 @@
       line-height: 1.6;
     }
 
+    /* ── Search ── */
+    .search-box {
+      margin-bottom: 1.2rem;
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.65rem 1rem 0.65rem 2.2rem;
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.88rem;
+      border: 1px solid var(--border);
+      background: var(--white);
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-box input:focus { border-color: var(--red); }
+
+    .search-box input::placeholder { color: var(--mid); }
+
+    .search-icon {
+      position: absolute;
+      left: 0.7rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--mid);
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+
+    .search-results {
+      margin-top: 0.5rem;
+    }
+
+    /* ── Closure type badge ── */
+    .type-badge {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 0.15rem 0.45rem;
+      border-radius: 2px;
+      white-space: nowrap;
+    }
+
+    .type-cleaning {
+      background: #e8f4e8;
+      color: #2d7a2d;
+    }
+
+    .type-renovation {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 480px) {
       .container { padding: 1.25rem 1rem 2.5rem; }
@@ -342,6 +399,13 @@
   </div>
 
   <p class="intro-text">Check which hawker centres in Singapore are closed for cleaning or renovation. Updated regularly with the latest closure dates — so you always know before you go.</p>
+
+  <!-- Search -->
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="hawker-search" placeholder="Search for a hawker centre…" autocomplete="off" />
+  </div>
+  <div class="search-results" id="search-results" style="display:none;"></div>
 
   <!-- Tabs -->
   <div class="tabs">
@@ -467,13 +531,6 @@
   }
 
   // ── Date parsing (same logic as bot) ──
-  const PERIODS = [
-    ["q1_cleaningstartdate","q1_cleaningenddate"],
-    ["q2_cleaningstartdate","q2_cleaningenddate"],
-    ["q3_cleaningstartdate","q3_cleaningenddate"],
-    ["q4_cleaningstartdate","q4_cleaningenddate"],
-    ["other_works_startdate","other_works_enddate"],
-  ];
 
   function parseDate(str) {
     if (!str) return null;
@@ -486,22 +543,44 @@
     return new Date(y, parseInt(m[2]) - 1, parseInt(m[1]));
   }
 
+  const CLEANING_PERIODS = [
+    ["q1_cleaningstartdate","q1_cleaningenddate"],
+    ["q2_cleaningstartdate","q2_cleaningenddate"],
+    ["q3_cleaningstartdate","q3_cleaningenddate"],
+    ["q4_cleaningstartdate","q4_cleaningenddate"],
+  ];
+  const OTHER_PERIODS = [["other_works_startdate","other_works_enddate"]];
+
   function closureOnDate(rec, target) {
     const t = stripTime(target);
-    for (const [sk, ek] of PERIODS) {
+    for (const [sk, ek] of CLEANING_PERIODS) {
       const s = parseDate(rec[sk]), e = parseDate(rec[ek]);
-      if (s && e && stripTime(s) <= t && t <= stripTime(e)) return { s, e };
+      if (s && e && stripTime(s) <= t && t <= stripTime(e)) return { s, e, type: "Cleaning" };
+    }
+    for (const [sk, ek] of OTHER_PERIODS) {
+      const s = parseDate(rec[sk]), e = parseDate(rec[ek]);
+      if (s && e && stripTime(s) <= t && t <= stripTime(e)) return { s, e, type: "Renovation" };
     }
     return null;
   }
 
   function closureInRange(rec, rs, re) {
     rs = stripTime(rs); re = stripTime(re);
-    for (const [sk, ek] of PERIODS) {
+    for (const [sk, ek] of CLEANING_PERIODS) {
       const s = parseDate(rec[sk]), e = parseDate(rec[ek]);
-      if (s && e && stripTime(s) <= re && stripTime(e) >= rs) return { s, e };
+      if (s && e && stripTime(s) <= re && stripTime(e) >= rs) return { s, e, type: "Cleaning" };
+    }
+    for (const [sk, ek] of OTHER_PERIODS) {
+      const s = parseDate(rec[sk]), e = parseDate(rec[ek]);
+      if (s && e && stripTime(s) <= re && stripTime(e) >= rs) return { s, e, type: "Renovation" };
     }
     return null;
+  }
+
+  // ── Get closure type badge HTML ──
+  function typeBadge(type) {
+    const cls = type === "Cleaning" ? "type-cleaning" : "type-renovation";
+    return `<span class="type-badge ${cls}">${type}</span>`;
   }
 
   // ── Render table ──
@@ -510,13 +589,93 @@
       return `<div class="empty-state"><strong>✅ All open</strong>No closures for this period.</div>`;
     }
     const trs = rows.map(r =>
-      `<tr><td>${r.name}</td><td>${fmtShort(r.s)} – ${fmtShort(r.e)}</td></tr>`
+      `<tr><td>${r.name}</td><td>${typeBadge(r.type)}</td><td>${fmtShort(r.s)} – ${fmtShort(r.e)}</td></tr>`
     ).join("");
     return `<table class="closure-table">
-      <thead><tr><th>Hawker Centre</th><th>Closure Period</th></tr></thead>
+      <thead><tr><th>Hawker Centre</th><th>Type</th><th>Closure Period</th></tr></thead>
       <tbody>${trs}</tbody>
     </table>`;
   }
+
+  // ── Search ──
+  let _allRecords = [];
+
+  function getNextClosure(rec) {
+    const today = stripTime(nowSGT());
+    const allPeriods = [...CLEANING_PERIODS, ...OTHER_PERIODS];
+    const upcoming = [];
+    for (const [sk, ek] of allPeriods) {
+      const s = parseDate(rec[sk]), e = parseDate(rec[ek]);
+      if (s && e && stripTime(e) >= today) upcoming.push({ s, e });
+    }
+    if (!upcoming.length) return null;
+    upcoming.sort((a, b) => a.s - b.s);
+    return upcoming[0];
+  }
+
+  function renderSearchResult(rec) {
+    const name = rec.name || "";
+    const today = stripTime(nowSGT());
+
+    // Check if closed today
+    let closure = closureOnDate(rec, today);
+    if (closure) {
+      return `<div class="closure-table" style="border:1px solid var(--border);background:var(--white);padding:0.85rem 1rem;">
+        <div style="font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">${name}</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;font-size:0.82rem;">
+          ${typeBadge(closure.type)}
+          <span style="color:var(--red);font-weight:600;">Closed now</span>
+          <span style="color:var(--mid);">${fmtShort(closure.s)} – ${fmtShort(closure.e)}</span>
+        </div>
+      </div>`;
+    }
+
+    // Open today — check next closure
+    const next = getNextClosure(rec);
+    if (next) {
+      return `<div style="border:1px solid var(--border);background:var(--white);padding:0.85rem 1rem;">
+        <div style="font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">${name}</div>
+        <div style="font-size:0.82rem;color:#2d7a2d;font-weight:600;margin-bottom:0.25rem;">✅ Open today</div>
+        <div style="font-size:0.78rem;color:var(--mid);">Next closure: ${fmtShort(next.s)} – ${fmtShort(next.e)}</div>
+      </div>`;
+    }
+
+    return `<div style="border:1px solid var(--border);background:var(--white);padding:0.85rem 1rem;">
+      <div style="font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">${name}</div>
+      <div style="font-size:0.82rem;color:#2d7a2d;font-weight:600;">✅ Open — no upcoming closures on record</div>
+    </div>`;
+  }
+
+  function doSearch(query) {
+    const searchBox = document.getElementById("search-results");
+    const tabsSection = document.querySelector(".tabs");
+    const panels = document.querySelectorAll(".panel");
+
+    if (!query.trim()) {
+      searchBox.style.display = "none";
+      tabsSection.style.display = "flex";
+      panels.forEach(p => p.style.display = "");
+      return;
+    }
+
+    const q = query.toLowerCase();
+    const matches = _allRecords.filter(r => (r.name || "").toLowerCase().includes(q));
+
+    tabsSection.style.display = "none";
+    panels.forEach(p => p.style.display = "none");
+    searchBox.style.display = "block";
+
+    if (!matches.length) {
+      searchBox.innerHTML = `<div class="empty-state"><strong>No results</strong>No hawker centre found matching "${query}".</div>`;
+      return;
+    }
+
+    searchBox.innerHTML = matches.slice(0, 8).map(renderSearchResult).join("");
+  }
+
+  document.getElementById("hawker-search").addEventListener("input", function() {
+    doSearch(this.value);
+  });
 
   // ── Update tab labels with count badges ──
   function setTabBadge(tabId, count) {
@@ -533,6 +692,7 @@
 
   // ── Populate from records ──
   function populate(records) {
+    _allRecords = records;
     const sgt      = nowSGT();
     const today    = stripTime(sgt);
     const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
