@@ -478,6 +478,11 @@
     <div class="search-dropdown" id="search-dropdown"></div>
   </div>
 
+  <!-- Search result panel — appears below search bar -->
+  <div class="panel" id="panel-search" style="margin-bottom:1.2rem;">
+    <div id="content-search"></div>
+  </div>
+
   <div class="page-heading">
     <h1>Hawker Centre Closure Dates</h1>
     <p>Check which hawker centres are closed before you make the trip.</p>
@@ -512,10 +517,6 @@
     <div id="content-week"><p style="color:var(--mid);font-size:0.85rem;">Loading…</p></div>
   </div>
 
-  <!-- Search result panel -->
-  <div class="panel" id="panel-search">
-    <div id="content-search"></div>
-  </div>
   <div class="bot-strip">
     <div class="bot-strip-text">
       <strong>Get daily hawker closure alerts on Telegram.</strong>
@@ -747,22 +748,15 @@
   }
 
   function activateSearchPanel(rec) {
-    // Deactivate all regular tabs
-    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
-    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-    // Activate search panel
-    document.getElementById("panel-search").classList.add("active");
+    const panel = document.getElementById("panel-search");
+    panel.classList.add("active");
     document.getElementById("content-search").innerHTML = renderSearchPanel(rec);
-    // Highlight search input as active
-    searchInput.style.borderBottomColor = "var(--red)";
   }
 
   function deactivateSearchPanel() {
-    // Return to Closed Today
-    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-    document.getElementById("panel-today").classList.add("active");
-    document.querySelector('.tab[data-tab="today"]').classList.add("active");
-    searchInput.style.borderBottomColor = "transparent";
+    const panel = document.getElementById("panel-search");
+    panel.classList.remove("active");
+    document.getElementById("content-search").innerHTML = "";
   }
 
   const searchInput = document.getElementById("hawker-search");
@@ -937,11 +931,6 @@
       document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
       btn.classList.add("active");
       document.getElementById("panel-" + btn.dataset.tab).classList.add("active");
-      // Clear search when switching tabs
-      searchInput.value = "";
-      searchClear.style.display = "none";
-      hideDropdown();
-      searchInput.style.borderBottomColor = "transparent";
     });
   });
 
