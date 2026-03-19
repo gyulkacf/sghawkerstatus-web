@@ -322,57 +322,46 @@
       line-height: 1.6;
     }
 
-    /* ── Search (inline with tabs) ── */
+    /* ── Search ── */
     .search-box {
       position: relative;
-      display: flex;
-      align-items: center;
-      margin-left: auto;
-      margin-bottom: -1.5px;
-      padding-bottom: 0.3rem;
+      margin-bottom: 1.5rem;
     }
 
     .search-box input {
-      width: 240px;
-      padding: 0.45rem 1.6rem 0.45rem 1.8rem;
+      width: 100%;
+      padding: 0.65rem 2rem 0.65rem 2.2rem;
       font-family: 'IBM Plex Sans', sans-serif;
-      font-size: 0.72rem;
-      letter-spacing: 0.03em;
+      font-size: 0.88rem;
       border: 1px solid var(--border);
-      border-bottom: 2px solid transparent;
-      background: var(--bg);
+      background: var(--white);
       color: var(--ink);
       outline: none;
       transition: border-color 0.15s;
     }
 
-    .search-box input:focus {
-      border-color: var(--border);
-      border-bottom-color: var(--red);
-      background: var(--white);
-    }
-
+    .search-box input:focus { border-color: var(--red); }
     .search-box input::placeholder { color: var(--mid); }
 
     .search-icon {
       position: absolute;
-      left: 0.5rem;
+      left: 0.7rem;
       top: 50%;
       transform: translateY(-50%);
       color: var(--mid);
-      font-size: 0.75rem;
+      font-size: 0.85rem;
       pointer-events: none;
     }
 
     .search-clear {
       position: absolute;
-      right: 0.4rem;
+      right: 0.7rem;
       top: 50%;
       transform: translateY(-50%);
       background: none;
       border: none;
       color: var(--mid);
-      font-size: 0.85rem;
+      font-size: 1rem;
       cursor: pointer;
       padding: 0;
       line-height: 1;
@@ -386,10 +375,11 @@
       display: none;
       position: absolute;
       top: 100%;
+      left: 0;
       right: 0;
-      width: 280px;
       background: var(--white);
       border: 1px solid var(--border);
+      border-top: none;
       z-index: 100;
       max-height: 360px;
       overflow-y: auto;
@@ -463,11 +453,6 @@
       .container { padding: 1.25rem 1rem 2.5rem; }
       .closure-table th, .closure-table td { padding: 0.6rem 0.75rem; }
       .closure-table td:last-child { white-space: normal; }
-      .tabs-row { flex-wrap: wrap; border-bottom: none; }
-      .tabs { border-bottom: 1.5px solid var(--border); width: 100%; }
-      .search-box { width: 100%; margin-top: 0.5rem; margin-bottom: 1rem; }
-      .search-box input { width: 100% !important; border: 1px solid var(--border); padding: 0.55rem 1.8rem; }
-      .search-dropdown { right: 0; left: 0; width: 100%; }
     }
   </style>
 </head>
@@ -485,6 +470,14 @@
 <!-- Main content -->
 <div class="container">
 
+  <!-- Search -->
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="hawker-search" placeholder="Search for a hawker centre…" autocomplete="off" />
+    <button class="search-clear" id="search-clear">✕</button>
+    <div class="search-dropdown" id="search-dropdown"></div>
+  </div>
+
   <div class="page-heading">
     <h1>Hawker Centre Closure Dates</h1>
     <p>Check which hawker centres are closed before you make the trip.</p>
@@ -492,18 +485,12 @@
 
   <p class="intro-text">Check which hawker centres in Singapore are closed for cleaning or renovation. Updated regularly with the latest closure dates — so you always know before you go.</p>
 
-  <!-- Tabs row with inline search -->
+  <!-- Tabs -->
   <div class="tabs-row">
     <div class="tabs">
       <button class="tab active" data-tab="today">Closed Today</button>
       <button class="tab" data-tab="tomorrow">Closed Tomorrow</button>
       <button class="tab" data-tab="week">This Week</button>
-    </div>
-    <div class="search-box">
-      <span class="search-icon">🔍</span>
-      <input type="text" id="hawker-search" placeholder="Search for a hawker centre…" autocomplete="off" />
-      <button class="search-clear" id="search-clear">✕</button>
-      <div class="search-dropdown" id="search-dropdown"></div>
     </div>
   </div>
 
