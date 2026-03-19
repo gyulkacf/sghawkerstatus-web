@@ -98,10 +98,18 @@
     }
 
     /* ── Tabs ── */
-    .tabs {
+    .tabs-row {
       display: flex;
+      align-items: stretch;
       border-bottom: 1.5px solid var(--border);
       margin-bottom: 1.25rem;
+      gap: 0;
+      position: relative;
+    }
+
+    .tabs {
+      display: flex;
+      flex: 1;
       gap: 0;
     }
 
@@ -314,46 +322,58 @@
       line-height: 1.6;
     }
 
-    /* ── Search ── */
+    /* ── Search (inline with tabs) ── */
     .search-box {
-      margin-bottom: 1.2rem;
       position: relative;
+      display: flex;
+      align-items: center;
+      margin-left: auto;
+      margin-bottom: -1.5px;
+      padding-bottom: 0.3rem;
     }
 
     .search-box input {
-      width: 100%;
-      padding: 0.65rem 1rem 0.65rem 2.2rem;
+      width: 200px;
+      padding: 0.45rem 1.6rem 0.45rem 1.8rem;
       font-family: 'IBM Plex Sans', sans-serif;
-      font-size: 0.88rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.03em;
       border: 1px solid var(--border);
-      background: var(--white);
+      border-bottom: 2px solid transparent;
+      background: var(--bg);
       color: var(--ink);
       outline: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, width 0.2s;
     }
 
-    .search-box input:focus { border-color: var(--red); }
+    .search-box input:focus {
+      border-color: var(--border);
+      border-bottom-color: var(--red);
+      background: var(--white);
+      width: 240px;
+    }
+
     .search-box input::placeholder { color: var(--mid); }
 
     .search-icon {
       position: absolute;
-      left: 0.7rem;
+      left: 0.5rem;
       top: 50%;
       transform: translateY(-50%);
       color: var(--mid);
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       pointer-events: none;
     }
 
     .search-clear {
       position: absolute;
-      right: 0.7rem;
+      right: 0.4rem;
       top: 50%;
       transform: translateY(-50%);
       background: none;
       border: none;
       color: var(--mid);
-      font-size: 1rem;
+      font-size: 0.85rem;
       cursor: pointer;
       padding: 0;
       line-height: 1;
@@ -367,11 +387,10 @@
       display: none;
       position: absolute;
       top: 100%;
-      left: 0;
       right: 0;
+      width: 280px;
       background: var(--white);
       border: 1px solid var(--border);
-      border-top: none;
       z-index: 100;
       max-height: 360px;
       overflow-y: auto;
@@ -379,6 +398,15 @@
     }
 
     .search-dropdown.visible { display: block; }
+
+    /* Mobile */
+    @media (max-width: 480px) {
+      .tabs-row { flex-wrap: wrap; border-bottom: none; }
+      .tabs { border-bottom: 1.5px solid var(--border); margin-bottom: 0; }
+      .search-box { width: 100%; margin-top: 0.5rem; margin-bottom: 1rem; }
+      .search-box input { width: 100% !important; border: 1px solid var(--border); }
+      .search-dropdown { right: 0; left: 0; width: 100%; }
+    }
 
     .search-result-item {
       padding: 0.75rem 1rem;
@@ -478,6 +506,11 @@
       .container { padding: 1.25rem 1rem 2.5rem; }
       .closure-table th, .closure-table td { padding: 0.6rem 0.75rem; }
       .closure-table td:last-child { white-space: normal; }
+      .tabs-row { flex-wrap: wrap; border-bottom: none; }
+      .tabs { border-bottom: 1.5px solid var(--border); width: 100%; }
+      .search-box { width: 100%; margin-top: 0.5rem; margin-bottom: 1rem; }
+      .search-box input { width: 100% !important; border: 1px solid var(--border); padding: 0.55rem 1.8rem; }
+      .search-dropdown { right: 0; left: 0; width: 100%; }
     }
   </style>
 </head>
@@ -502,14 +535,6 @@
 
   <p class="intro-text">Check which hawker centres in Singapore are closed for cleaning or renovation. Updated regularly with the latest closure dates — so you always know before you go.</p>
 
-  <!-- Search -->
-  <div class="search-box">
-    <span class="search-icon">🔍</span>
-    <input type="text" id="hawker-search" placeholder="Search for a hawker centre…" autocomplete="off" />
-    <button class="search-clear" id="search-clear">✕</button>
-    <div class="search-dropdown" id="search-dropdown"></div>
-  </div>
-
   <!-- Pinned result card -->
   <div class="pinned-result" id="pinned-result">
     <button class="pinned-close" id="pinned-close">✕</button>
@@ -517,11 +542,19 @@
     <div class="pinned-result-status" id="pinned-status"></div>
   </div>
 
-  <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab active" data-tab="today">Closed Today</button>
-    <button class="tab" data-tab="tomorrow">Closed Tomorrow</button>
-    <button class="tab" data-tab="week">This Week</button>
+  <!-- Tabs row with inline search -->
+  <div class="tabs-row">
+    <div class="tabs">
+      <button class="tab active" data-tab="today">Closed Today</button>
+      <button class="tab" data-tab="tomorrow">Closed Tomorrow</button>
+      <button class="tab" data-tab="week">This Week</button>
+    </div>
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="hawker-search" placeholder="Search for a hawker centre…" autocomplete="off" />
+      <button class="search-clear" id="search-clear">✕</button>
+      <div class="search-dropdown" id="search-dropdown"></div>
+    </div>
   </div>
 
   <!-- Today -->
