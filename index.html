@@ -333,7 +333,6 @@
     }
 
     .search-box input:focus { border-color: var(--red); }
-
     .search-box input::placeholder { color: var(--mid); }
 
     .search-icon {
@@ -346,8 +345,69 @@
       pointer-events: none;
     }
 
-    .search-results {
-      margin-top: 0.5rem;
+    .search-clear {
+      position: absolute;
+      right: 0.7rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--mid);
+      font-size: 1rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      display: none;
+    }
+
+    .search-clear:hover { color: var(--ink); }
+
+    /* Dropdown */
+    .search-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-top: none;
+      z-index: 100;
+      max-height: 360px;
+      overflow-y: auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .search-dropdown.visible { display: block; }
+
+    .search-result-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      cursor: default;
+    }
+
+    .search-result-item:last-child { border-bottom: none; }
+    .search-result-item:hover { background: var(--red-pale); }
+
+    .search-result-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+
+    .search-result-status {
+      font-size: 0.78rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .search-no-results {
+      padding: 1rem;
+      font-size: 0.85rem;
+      color: var(--mid);
+      text-align: center;
     }
 
     /* ── Closure type badge ── */
@@ -404,8 +464,9 @@
   <div class="search-box">
     <span class="search-icon">🔍</span>
     <input type="text" id="hawker-search" placeholder="Search for a hawker centre…" autocomplete="off" />
+    <button class="search-clear" id="search-clear">✕</button>
+    <div class="search-dropdown" id="search-dropdown"></div>
   </div>
-  <div class="search-results" id="search-results" style="display:none;"></div>
 
   <!-- Tabs -->
   <div class="tabs">
@@ -597,7 +658,7 @@
     </table>`;
   }
 
-  // ── Search ──
+  // ── Search (dropdown — tabs always visible) ──
   let _allRecords = [];
 
   function getNextClosure(rec) {
@@ -613,68 +674,80 @@
     return upcoming[0];
   }
 
-  function renderSearchResult(rec) {
+  function renderDropdownItem(rec) {
     const name = rec.name || "";
     const today = stripTime(nowSGT());
+    const closure = closureOnDate(rec, today);
 
-    // Check if closed today
-    let closure = closureOnDate(rec, today);
+    let statusHtml;
     if (closure) {
-      return `<div class="closure-table" style="border:1px solid var(--border);background:var(--white);padding:0.85rem 1rem;">
-        <div style="font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">${name}</div>
-        <div style="display:flex;align-items:center;gap:0.5rem;font-size:0.82rem;">
+      statusHtml = `
+        <div class="search-result-status">
           ${typeBadge(closure.type)}
           <span style="color:var(--red);font-weight:600;">Closed now</span>
           <span style="color:var(--mid);">${fmtShort(closure.s)} – ${fmtShort(closure.e)}</span>
-        </div>
-      </div>`;
+        </div>`;
+    } else {
+      const next = getNextClosure(rec);
+      statusHtml = `
+        <div class="search-result-status">
+          <span style="color:#2d7a2d;font-weight:600;">✅ Open today</span>
+          ${next ? `<span style="color:var(--mid);">Next closure: ${fmtShort(next.s)} – ${fmtShort(next.e)}</span>` : ''}
+        </div>`;
     }
 
-    // Open today — check next closure
-    const next = getNextClosure(rec);
-    if (next) {
-      return `<div style="border:1px solid var(--border);background:var(--white);padding:0.85rem 1rem;">
-        <div style="font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">${name}</div>
-        <div style="font-size:0.82rem;color:#2d7a2d;font-weight:600;margin-bottom:0.25rem;">✅ Open today</div>
-        <div style="font-size:0.78rem;color:var(--mid);">Next closure: ${fmtShort(next.s)} – ${fmtShort(next.e)}</div>
-      </div>`;
-    }
-
-    return `<div style="border:1px solid var(--border);background:var(--white);padding:0.85rem 1rem;">
-      <div style="font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">${name}</div>
-      <div style="font-size:0.82rem;color:#2d7a2d;font-weight:600;">✅ Open — no upcoming closures on record</div>
+    return `<div class="search-result-item">
+      <div class="search-result-name">${name}</div>
+      ${statusHtml}
     </div>`;
   }
 
-  function doSearch(query) {
-    const searchBox = document.getElementById("search-results");
-    const tabsSection = document.querySelector(".tabs");
-    const panels = document.querySelectorAll(".panel");
+  const searchInput = document.getElementById("hawker-search");
+  const searchDropdown = document.getElementById("search-dropdown");
+  const searchClear = document.getElementById("search-clear");
 
-    if (!query.trim()) {
-      searchBox.style.display = "none";
-      tabsSection.style.display = "flex";
-      panels.forEach(p => p.style.display = "");
-      return;
-    }
-
-    const q = query.toLowerCase();
-    const matches = _allRecords.filter(r => (r.name || "").toLowerCase().includes(q));
-
-    tabsSection.style.display = "none";
-    panels.forEach(p => p.style.display = "none");
-    searchBox.style.display = "block";
-
-    if (!matches.length) {
-      searchBox.innerHTML = `<div class="empty-state"><strong>No results</strong>No hawker centre found matching "${query}".</div>`;
-      return;
-    }
-
-    searchBox.innerHTML = matches.slice(0, 8).map(renderSearchResult).join("");
+  function showDropdown(html) {
+    searchDropdown.innerHTML = html;
+    searchDropdown.classList.add("visible");
   }
 
-  document.getElementById("hawker-search").addEventListener("input", function() {
-    doSearch(this.value);
+  function hideDropdown() {
+    searchDropdown.classList.remove("visible");
+    searchDropdown.innerHTML = "";
+  }
+
+  searchInput.addEventListener("input", function() {
+    const q = this.value.trim();
+    searchClear.style.display = q ? "block" : "none";
+
+    if (!q) { hideDropdown(); return; }
+
+    const matches = _allRecords.filter(r => (r.name || "").toLowerCase().includes(q.toLowerCase()));
+
+    if (!matches.length) {
+      showDropdown(`<div class="search-no-results">No hawker centre found matching "${q}".</div>`);
+      return;
+    }
+
+    showDropdown(matches.slice(0, 8).map(renderDropdownItem).join(""));
+  });
+
+  searchClear.addEventListener("click", function() {
+    searchInput.value = "";
+    searchClear.style.display = "none";
+    hideDropdown();
+    searchInput.focus();
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener("click", function(e) {
+    if (!e.target.closest(".search-box")) hideDropdown();
+  });
+
+  searchInput.addEventListener("focus", function() {
+    if (this.value.trim() && searchDropdown.innerHTML) {
+      searchDropdown.classList.add("visible");
+    }
   });
 
   // ── Update tab labels with count badges ──
