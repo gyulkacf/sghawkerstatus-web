@@ -496,6 +496,7 @@
       <button class="tab active" data-tab="today">Closed Today</button>
       <button class="tab" data-tab="tomorrow">Closed Tomorrow</button>
       <button class="tab" data-tab="week">This Week</button>
+      <button class="tab" data-tab="nextweek">Next Week</button>
     </div>
   </div>
 
@@ -515,6 +516,12 @@
   <div class="panel" id="panel-week">
     <p class="date-label" id="label-week"></p>
     <div id="content-week"><p style="color:var(--mid);font-size:0.85rem;">Loading…</p></div>
+  </div>
+
+  <!-- Next week -->
+  <div class="panel" id="panel-nextweek">
+    <p class="date-label" id="label-nextweek"></p>
+    <div id="content-nextweek"><p style="color:var(--mid);font-size:0.85rem;">Loading…</p></div>
   </div>
 
   <div class="bot-strip">
@@ -612,6 +619,13 @@
     const m = new Date(now);
     m.setDate(now.getDate() + diff);
     return stripTime(m);
+  }
+
+  function nextMondaySGT() {
+    const mon = mondaySGT();
+    const next = new Date(mon);
+    next.setDate(mon.getDate() + 7);
+    return next;
   }
 
   // ── Date parsing (same logic as bot) ──
@@ -843,14 +857,16 @@
     const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
     const wMon     = mondaySGT();
     const wSun     = new Date(wMon); wSun.setDate(wMon.getDate() + 6);
+    const nwMon    = nextMondaySGT();
+    const nwSun    = new Date(nwMon); nwSun.setDate(nwMon.getDate() + 6);
 
     // Set date labels
     document.getElementById("label-today").textContent    = fmtDate(today);
     document.getElementById("label-tomorrow").textContent = fmtDate(tomorrow);
-    document.getElementById("label-week").textContent     =
-      `${fmtShort(wMon)} – ${fmtShort(wSun)}`;
+    document.getElementById("label-week").textContent     = `${fmtShort(wMon)} – ${fmtShort(wSun)}`;
+    document.getElementById("label-nextweek").textContent = `${fmtShort(nwMon)} – ${fmtShort(nwSun)}`;
 
-    const buckets = { today: [], tomorrow: [], week: [] };
+    const buckets = { today: [], tomorrow: [], week: [], nextweek: [] };
 
     for (const rec of records) {
       const name = (rec.name || "").trim();
@@ -861,10 +877,12 @@
       if (c2) buckets.tomorrow.push({ name, ...c2 });
       const c3 = closureInRange(rec, wMon, wSun);
       if (c3) buckets.week.push({ name, ...c3 });
+      const c4 = closureInRange(rec, nwMon, nwSun);
+      if (c4) buckets.nextweek.push({ name, ...c4 });
     }
 
     const byName = (a, b) => a.name.localeCompare(b.name);
-    for (const key of ["today", "tomorrow", "week"]) {
+    for (const key of ["today", "tomorrow", "week", "nextweek"]) {
       buckets[key].sort(byName);
       document.getElementById("content-" + key).innerHTML = renderTable(buckets[key]);
       setTabBadge(key, buckets[key].length);
@@ -914,10 +932,13 @@
       const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
       const wMon     = mondaySGT();
       const wSun     = new Date(wMon); wSun.setDate(wMon.getDate() + 6);
+      const nwMon    = nextMondaySGT();
+      const nwSun    = new Date(nwMon); nwSun.setDate(nwMon.getDate() + 6);
       document.getElementById("label-today").textContent    = fmtDate(today);
       document.getElementById("label-tomorrow").textContent = fmtDate(tomorrow);
       document.getElementById("label-week").textContent     = `${fmtShort(wMon)} – ${fmtShort(wSun)}`;
-      for (const key of ["today", "tomorrow", "week"]) {
+      document.getElementById("label-nextweek").textContent = `${fmtShort(nwMon)} – ${fmtShort(nwSun)}`;
+      for (const key of ["today", "tomorrow", "week", "nextweek"]) {
         document.getElementById("content-" + key).innerHTML =
           `<div class="empty-state"><strong>Data unavailable</strong>Live data coming soon.</div>`;
       }
